@@ -1,9 +1,9 @@
 # global-media-bias-analyzer
 A quantitative analytics platform for identifying and visualizing systemic bias in international news streams using the GDELT database.
-###Overview###
+##Overview##
 The Global Media Bias Analyzer is a data-driven tool designed to track how different news outlets report on countries around the world. By analyzing sentiment scores from the GDELT Project, this platform identifies whether media coverage is leaning toward a positive, negative, or neutral narrative.
 
-###Live Application###
+##Live Application##
 You can access the live dashboard here:
 [INSERT YOUR STREAMLIT URL HERE]
 
