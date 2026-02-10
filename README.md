@@ -17,4 +17,7 @@ The **Global Media Bias Analyzer** is a data-driven tool designed to track how d
 * **Pandas**
 * **Plotly**
 
+## Live Application
+**Access the live dashboard here:**
+https://global-media-bias-analyzer-fbjmdskfcmwj52sucdugs2.streamlit.app/
 
