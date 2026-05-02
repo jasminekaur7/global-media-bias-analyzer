@@ -30,10 +30,7 @@ st.markdown("""
 def get_db_connection():
     # CHANGE 'your_password' TO YOUR ACTUAL PGADMIN PASSWORD
     return psycopg2.connect(
-        host="localhost",
-        database="shadow_network",
-        user="postgres",
-        password="jasmine" 
+      "postgresql://neondb_owner:npg_GSZgsy4Eaf2p@ep-green-wind-anshqoip.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require" 
     )
 
 def extract_source(url):

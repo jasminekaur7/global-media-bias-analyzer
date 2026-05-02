@@ -7,7 +7,7 @@ CSV_FILE = "data.csv"
 
 try:
     # 1. Connect to your database
-    engine = create_engine(f'postgresql://postgres:{DB_PASS}@localhost:5432/shadow_network')
+    engine = create_engine('postgresql://neondb_owner:npg_GSZgsy4Eaf2p@ep-green-wind-anshqoip.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require')
 
     # 2. Read your CSV
     df = pd.read_csv(CSV_FILE)
