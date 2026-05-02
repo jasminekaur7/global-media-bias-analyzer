@@ -2,64 +2,66 @@ import streamlit as st
 import psycopg2
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import random
 import time
 from urllib.parse import urlparse
 
-# --- 1. UI CONFIG & COMMAND CENTER THEME ---
-st.set_page_config(page_title="BIASSENTINEL | COMMAND", layout="wide")
+# --- 1. UI CONFIG & BIASSENTINEL THEME ---
+st.set_page_config(page_title="BIASSENTINEL | LIVE", layout="wide")
 
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=JetBrains+Mono:wght@400;700&display=swap');
     
-    /* Background and Base Text */
+    /* Global Styles */
     .main { background-color: #0d0d0d; color: #e0e0d1; font-family: 'JetBrains Mono', monospace; }
-    
-    /* Sidebar styling */
     [data-testid="stSidebar"] { background-color: #141414; border-right: 2px solid #a01a1a; }
     
-    /* Headers */
-    .masthead { font-family: 'Playfair Display', serif; text-align: center; letter-spacing: 5px; color: #e0e0d1; margin-bottom: 0px; }
-    .sub-masthead { text-align: center; font-size: 0.8rem; letter-spacing: 3px; color: #666; margin-bottom: 30px; }
+    /* Typography */
+    h1, h2, h3 { font-family: 'Playfair Display', serif; color: #e0e0d1; text-transform: uppercase; letter-spacing: 3px; }
     
-    /* Metric Cards (Matches your reference image 2) */
-    .kpi-card { 
-        border: 1px solid #333; background: #1a1a1a; padding: 20px; text-align: center; 
-        border-top: 4px solid #a01a1a; 
-    }
-    .kpi-value { font-size: 2.5rem; font-weight: bold; color: #e0e0d1; margin: 0; }
-    .kpi-label { font-size: 0.7rem; color: #a01a1a; text-transform: uppercase; letter-spacing: 2px; }
-
-    /* The "News Ticker" Bar */
-    .ticker-bar { 
-        background: #e0e0d1; color: #0d0d0d; padding: 5px; font-weight: bold; 
-        font-size: 0.8rem; text-transform: uppercase; margin-bottom: 20px; 
-    }
-
-    /* Roulette Box */
+    /* Roulette Box - HIGH VISIBILITY */
     .slot-machine-sidebar { 
-        font-size: 1.2rem; font-weight: bold; color: #ff4b4b; text-align: center; 
-        border: 1px solid #a01a1a; padding: 15px; background: #000; 
-        margin-bottom: 15px; text-transform: uppercase;
+        font-size: 1.4rem; font-weight: bold; color: #ff4b4b; text-align: center; 
+        border: 2px solid #a01a1a; padding: 15px; background: #000000; 
+        margin-bottom: 15px; text-transform: uppercase; box-shadow: 0 0 10px rgba(160, 26, 26, 0.5);
     }
     
-    /* Buttons */
-    .stButton>button { 
-        width: 100%; border-radius: 0px; background: transparent; color: #e0e0d1; 
-        border: 1px solid #444; text-transform: uppercase; letter-spacing: 2px;
+    /* Top Banner / Ticker Area */
+    .legend-box { 
+        border: 1px solid #444; border-left: 10px solid #a01a1a; padding: 15px; 
+        background-color: #1a1a1a; color: #e0e0d1; margin-bottom: 25px; 
+        font-size: 0.9rem; text-transform: uppercase;
     }
-    .stButton>button:hover { border-color: #a01a1a; color: #a01a1a; }
-
-    /* Input Boxes Fix */
-    input { background-color: #1a1a1a !important; color: #e0e0d1 !important; border: 1px solid #333 !important; }
+    
+    /* Cyber Cards */
+    .cyber-card { 
+        border-radius: 0px; padding: 20px; background: #1a1a1a; 
+        border: 1px solid #333; height: 100%; transition: 0.3s; 
+    }
+    .cyber-card:hover { border-color: #a01a1a; background: #222; }
+    
+    /* Buttons - BEIGE ON BLACK */
+    .stButton>button { 
+        width: 100%; border-radius: 0px; background: #e0e0d1; color: #0d0d0d; 
+        font-weight: bold; border: 1px solid #e0e0d1; text-transform: uppercase;
+    }
+    .stButton>button:hover { background: #a01a1a; color: white; border-color: #a01a1a; }
+    
+    /* Input Boxes Fix (Solves the "Invisible Text" issue) */
+    input, .stSelectbox div { background-color: #1a1a1a !important; color: #e0e0d1 !important; border: 1px solid #444 !important; }
+    label { color: #a01a1a !important; text-transform: uppercase; font-size: 0.8rem !important; letter-spacing: 1px; }
+    
+    /* Tables */
+    .stTable { background-color: #1a1a1a; color: #e0e0d1; border: 1px solid #333; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. DATABASE UTILITIES ---
 def get_db_connection():
-    return psycopg2.connect("postgresql://neondb_owner:npg_GSZgsy4Eaf2p@ep-green-wind-anshqoip.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require")
+    return psycopg2.connect(
+      "postgresql://neondb_owner:npg_GSZgsy4Eaf2p@ep-green-wind-anshqoip.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require" 
+    )
 
 def extract_source(url):
     try: return urlparse(str(url)).netloc.replace('www.', '').upper()
@@ -69,100 +71,119 @@ def extract_source(url):
 if 'target' not in st.session_state:
     st.session_state.target = "India"
 
-# --- 4. SIDEBAR ---
+# --- 4. SIDEBAR: ROULETTE & DBMS CONTROLS ---
 with st.sidebar:
     st.markdown("<h3 style='text-align:center; color:#a01a1a;'>REGIONAL ROULETTE</h3>", unsafe_allow_html=True)
+    
     try:
         conn = get_db_connection()
+        # Clean country list logic
         loc_query = "SELECT DISTINCT location_name FROM news_signals"
         raw_locs = pd.read_sql(loc_query, conn)['location_name'].tolist()
         conn.close()
         country_list = sorted(list(set([str(l).split(',')[-1].strip() for l in raw_locs if l and len(str(l)) > 2])))
     except:
-        country_list = ["INDIA", "USA", "RUSSIA"]
+        country_list = ["INDIA", "USA", "RUSSIA", "UK"]
 
     wheel_placeholder = st.empty()
     wheel_placeholder.markdown(f'<div class="slot-machine-sidebar">{st.session_state.target.upper()}</div>', unsafe_allow_html=True)
 
-    if st.button("SPIN FOR TARGET"):
-        for i in range(10):
+    if st.button("🎰 SPIN FOR TARGET"):
+        for i in range(12):
             temp = random.choice(country_list)
             wheel_placeholder.markdown(f'<div class="slot-machine-sidebar">{temp.upper()}</div>', unsafe_allow_html=True)
             time.sleep(0.08)
         st.session_state.target = random.choice(country_list)
         st.rerun()
-
-    st.markdown("<br><h3 style='text-align:center; color:#a01a1a;'>BUREAU AUDIT</h3>", unsafe_allow_html=True)
-    if st.button("RUN PL/SQL CURSOR"):
+    
+    st.markdown("---")
+    st.markdown("<h3 style='text-align:center; color:#a01a1a;'>BUREAU AUDIT</h3>", unsafe_allow_html=True)
+    if st.button("📜 RUN BIAS AUDIT"):
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("CALL run_bias_audit();")
-        st.sidebar.success("Audit complete.")
+        st.sidebar.success("Audit procedure executed in cloud.")
         conn.close()
 
-# --- 5. HEADER SECTION ---
-st.markdown("<h1 class='masthead'>BIASSENTINEL</h1>", unsafe_allow_html=True)
-st.markdown("<p class='sub-masthead'>GLOBAL MEDIA INTELLIGENCE PLATFORM</p>", unsafe_allow_html=True)
+# --- 5. MAIN INTERFACE ---
+st.markdown("<h1 style='text-align:center; letter-spacing:10px;'>BIASSENTINEL</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#666; margin-bottom:30px;'>GLOBAL MEDIA INTELLIGENCE ENGINE | V2.0</p>", unsafe_allow_html=True)
 
-# Fetch Data
+st.markdown('<div class="legend-box">DEPLOYMENT ADVISORY: Analyzing regional bias patterns for ' + st.session_state.target.upper() + '. Records retrieved via Cloud SQL.</div>', unsafe_allow_html=True)
+
+col_search, col_sort = st.columns([3, 2])
+with col_search:
+    target = st.text_input("🎯 TARGET GEOGRAPHY:", value=st.session_state.target)
+    st.session_state.target = target
+with col_sort:
+    sort_order = st.selectbox("↕️ EDITORIAL PRIORITY:", ["Most Negative First", "Most Positive First"])
+
+# --- FETCH DATA FROM SQL ---
 conn = get_db_connection()
-query = f"SELECT * FROM news_signals WHERE location_name ILIKE '%{st.session_state.target}%'"
-df = pd.read_sql(query, conn)
+query = f"SELECT * FROM news_signals WHERE location_name ILIKE '%{target}%'"
+filtered_df = pd.read_sql(query, conn)
 conn.close()
 
-# News Ticker Logic
-st.markdown(f"<div class='ticker-bar'>• LIVE FEED: ANALYZING {len(df)} ARTICLES FOR {st.session_state.target.upper()} • ENCRYPTION: ACTIVE • DB: NEON CLOUD</div>", unsafe_allow_html=True)
-
-if not df.empty:
-    # --- 6. KPI TOP ROW (Matches Image 2) ---
-    avg_bias = df['sentiment_score'].mean()
-    sources_count = df['source_url'].apply(extract_source).nunique()
+if not filtered_df.empty:
+    ascending = True if "Negative" in sort_order else False
     
-    kpi1, kpi2, kpi3 = st.columns(3)
-    with kpi1:
-        st.markdown(f"<div class='kpi-card'><p class='kpi-label'>OVERALL BIAS SCORE</p><p class='kpi-value'>{avg_bias:.1f}</p></div>", unsafe_allow_html=True)
-    with kpi2:
-        st.markdown(f"<div class='kpi-card'><p class='kpi-label'>ARTICLES ANALYSED</p><p class='kpi-value'>{len(df)}</p></div>", unsafe_allow_html=True)
-    with kpi3:
-        st.markdown(f"<div class='kpi-card'><p class='kpi-label'>SOURCES DETECTED</p><p class='kpi-value'>{sources_count}</p></div>", unsafe_allow_html=True)
+    # Aggregation
+    df_grouped = filtered_df.groupby('source_url')['sentiment_score'].agg(['mean', 'count']).reset_index()
+    df_grouped.columns = ['source_url', 'avg_score', 'vol']
+    df_grouped = df_grouped.sort_values(by='avg_score', ascending=ascending).head(15)
+    df_grouped['CHANNEL'] = df_grouped['source_url'].apply(extract_source)
+    
+    def get_label(s):
+        if s < -4: return "🛑 SYSTEMIC NEGATIVE"
+        if s > 4: return "✨ SYSTEMIC POSITIVE"
+        return "⚖️ NEUTRAL ALIGNMENT"
+    df_grouped['ANALYSIS'] = df_grouped['avg_score'].apply(get_label)
 
-    # --- 7. MAIN VISUALS ---
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_left, col_right = st.columns([2, 1])
+    # --- SECTION 1: THE TABLE ---
+    st.subheader(f"MEDIA LANDSCAPE: {target.upper()}")
+    st.table(df_grouped[['CHANNEL', 'ANALYSIS', 'vol']].rename(columns={'vol': 'Articles'}))
 
-    with col_left:
-        st.markdown("### SENTIMENT TREND OVER TIME")
-        # Creating a fake timeline for demo since GDELT dates are often single-day snapshots
-        df['mock_date'] = pd.date_range(start='2026-01-01', periods=len(df), freq='H')
-        fig_line = px.line(df.sort_values('mock_date'), x='mock_date', y='sentiment_score', color_discrete_sequence=['#a01a1a'])
-        fig_line.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title="", yaxis_title="BIAS LEVEL")
-        st.plotly_chart(fig_line, use_container_width=True)
+    # --- SECTION 2: GRAPHS (THEME MATCHED) ---
+    c1, c2 = st.columns(2)
+    with c1:
+        fig1 = px.histogram(filtered_df, x="sentiment_score", title="Sentiment Polarity Spread", color_discrete_sequence=['#a01a1a'])
+        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#e0e0d1"))
+        st.plotly_chart(fig1, use_container_width=True)
+    with c2:
+        fig2 = px.bar(df_grouped.head(10), x="avg_score", y="CHANNEL", orientation='h', title="Top Source Bias Comparison", color="avg_score", color_continuous_scale=["#a01a1a", "#e0e0d1"])
+        fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#e0e0d1"))
+        st.plotly_chart(fig2, use_container_width=True)
 
-    with col_right:
-        st.markdown("### BIAS GAUGE")
-        fig_gauge = go.Figure(go.Indicator(
-            mode = "gauge+number",
-            value = avg_bias,
-            domain = {'x': [0, 1], 'y': [0, 1]},
-            gauge = {
-                'axis': {'range': [-10, 10], 'tickwidth': 1, 'tickcolor': "#e0e0d1"},
-                'bar': {'color': "#a01a1a"},
-                'bgcolor': "#1a1a1a",
-                'borderwidth': 2,
-                'bordercolor': "#333",
-                'steps': [
-                    {'range': [-10, -3], 'color': '#301010'},
-                    {'range': [3, 10], 'color': '#103010'}],
-            }
-        ))
-        fig_gauge.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=300)
-        st.plotly_chart(fig_gauge, use_container_width=True)
+    # --- SECTION 3: PL/SQL TRIGGER TEST ---
+    st.markdown("---")
+    st.subheader("🚩 REPORT BIAS")
+    col_rep1, col_rep2 = st.columns([3,1])
+    with col_rep1:
+        report_channel = st.selectbox("Select Channel to Report:", df_grouped['CHANNEL'].tolist())
+    with col_rep2:
+        if st.button("SUBMIT REPORT"):
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("INSERT INTO bias_reports (report_reason) VALUES (%s)", (f"Bias Flagged: {report_channel}",))
+            conn.commit()
+            conn.close()
+            st.toast("Trigger Activated: Audit logged.", icon="✒️")
 
-    # --- 8. SOURCE BREAKDOWN ---
-    st.markdown("### DATASET TABLE")
-    st.dataframe(df[['actor_name', 'location_name', 'sentiment_score']].head(10), use_container_width=True)
-
+    # --- SECTION 4: CARDS ---
+    st.markdown("---")
+    st.subheader("📑 RECENT SIGNAL INTERCEPTS")
+    cards_df = filtered_df.sample(min(len(filtered_df), 6))
+    grid = st.columns(3)
+    for i, (idx, row) in enumerate(cards_df.iterrows()):
+        with grid[i % 3]:
+            score = row['sentiment_score']
+            color = "#a01a1a" if score < 0 else "#e0e0d1"
+            st.markdown(f"""<div class="cyber-card" style="border-top: 5px solid {color};">
+                <h4 style="margin:0; border:none; font-size:1rem;">📡 {extract_source(row['source_url'])}</h4>
+                <p style="color: {color}; margin-top:10px;"><b>BIAS SCORE: {score:.2f}</b></p>
+            </div>""", unsafe_allow_html=True)
+            st.link_button("READ ARTICLE", str(row['source_url']), use_container_width=True)
 else:
-    st.warning(f"NO DATA FOUND FOR {st.session_state.target}. SPIN THE ROULETTE AGAIN.")
+    st.info("Scanning for signal matches...")
 
-st.markdown("<div style='text-align:center; margin-top:50px; color:#444; font-size:0.7rem;'>TERMINAL ACCESS GRANTED | GDELT ENGINE V2.0 | NO LOGS SAVED</div>", unsafe_allow_html=True)
+st.markdown('<div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #000; text-align: center; padding: 5px; color: #a01a1a; font-size:0.7rem; border-top:1px solid #a01a1a;">BIASSENTINEL DISPATCH | DATABASE: NEON CLOUD | PL/SQL ENABLED</div>', unsafe_allow_html=True)
