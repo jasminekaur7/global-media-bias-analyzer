@@ -15,12 +15,13 @@ st.markdown("""
     
     /* Global Styles */
     .main { background-color: #0d0d0d; color: #e0e0d1; font-family: 'JetBrains Mono', monospace; }
+    [data-testid="stAppViewContainer"] { background-color: #0d0d0d; }
     [data-testid="stSidebar"] { background-color: #141414; border-right: 2px solid #a01a1a; }
     
     /* Typography */
     h1, h2, h3 { font-family: 'Playfair Display', serif; color: #e0e0d1; text-transform: uppercase; letter-spacing: 3px; }
     
-    /* Roulette Box - HIGH VISIBILITY */
+    /* Roulette Box */
     .slot-machine-sidebar { 
         font-size: 1.4rem; font-weight: bold; color: #ff4b4b; text-align: center; 
         border: 2px solid #a01a1a; padding: 15px; background: #000000; 
@@ -34,23 +35,28 @@ st.markdown("""
         font-size: 0.9rem; text-transform: uppercase;
     }
     
-    /* Cyber Cards */
+    /* Cards */
     .cyber-card { 
         border-radius: 0px; padding: 20px; background: #1a1a1a; 
         border: 1px solid #333; height: 100%; transition: 0.3s; 
     }
     .cyber-card:hover { border-color: #a01a1a; background: #222; }
     
-    /* Buttons - BEIGE ON BLACK */
+    /* Comparison Metric Boxes */
+    .compare-box {
+        padding: 20px; border: 1px solid #444; background: #111; text-align: center; border-top: 4px solid #a01a1a;
+    }
+
+    /* Buttons */
     .stButton>button { 
         width: 100%; border-radius: 0px; background: #e0e0d1; color: #0d0d0d; 
         font-weight: bold; border: 1px solid #e0e0d1; text-transform: uppercase;
     }
     .stButton>button:hover { background: #a01a1a; color: white; border-color: #a01a1a; }
     
-    /* Input Boxes Fix (Solves the "Invisible Text" issue) */
-    input, .stSelectbox div { background-color: #1a1a1a !important; color: #e0e0d1 !important; border: 1px solid #444 !important; }
-    label { color: #a01a1a !important; text-transform: uppercase; font-size: 0.8rem !important; letter-spacing: 1px; }
+    /* Fix for "weird boxes" in selectbox/inputs */
+    input, .stSelectbox div { background-color: #1a1a1a !important; color: #e0e0d1 !important; border: 1px solid #444 !important; border-radius: 0px !important; }
+    label { color: #a01a1a !important; text-transform: uppercase; font-size: 0.8rem !important; letter-spacing: 1px; font-weight: bold; }
     
     /* Tables */
     .stTable { background-color: #1a1a1a; color: #e0e0d1; border: 1px solid #333; }
@@ -59,9 +65,7 @@ st.markdown("""
 
 # --- 2. DATABASE UTILITIES ---
 def get_db_connection():
-    return psycopg2.connect(
-      "postgresql://neondb_owner:npg_GSZgsy4Eaf2p@ep-green-wind-anshqoip.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require" 
-    )
+    return psycopg2.connect("postgresql://neondb_owner:npg_GSZgsy4Eaf2p@ep-green-wind-anshqoip.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require")
 
 def extract_source(url):
     try: return urlparse(str(url)).netloc.replace('www.', '').upper()
@@ -77,7 +81,6 @@ with st.sidebar:
     
     try:
         conn = get_db_connection()
-        # Clean country list logic
         loc_query = "SELECT DISTINCT location_name FROM news_signals"
         raw_locs = pd.read_sql(loc_query, conn)['location_name'].tolist()
         conn.close()
@@ -88,8 +91,8 @@ with st.sidebar:
     wheel_placeholder = st.empty()
     wheel_placeholder.markdown(f'<div class="slot-machine-sidebar">{st.session_state.target.upper()}</div>', unsafe_allow_html=True)
 
-    if st.button("🎰 SPIN FOR TARGET"):
-        for i in range(12):
+    if st.button("SPIN FOR TARGET"):
+        for i in range(8):
             temp = random.choice(country_list)
             wheel_placeholder.markdown(f'<div class="slot-machine-sidebar">{temp.upper()}</div>', unsafe_allow_html=True)
             time.sleep(0.08)
@@ -98,11 +101,11 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("<h3 style='text-align:center; color:#a01a1a;'>BUREAU AUDIT</h3>", unsafe_allow_html=True)
-    if st.button("📜 RUN BIAS AUDIT"):
+    if st.button("RUN BIAS AUDIT"):
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("CALL run_bias_audit();")
-        st.sidebar.success("Audit procedure executed in cloud.")
+        st.sidebar.success("Audit complete.")
         conn.close()
 
 # --- 5. MAIN INTERFACE ---
@@ -113,10 +116,12 @@ st.markdown('<div class="legend-box">DEPLOYMENT ADVISORY: Analyzing regional bia
 
 col_search, col_sort = st.columns([3, 2])
 with col_search:
-    target = st.text_input("🎯 TARGET GEOGRAPHY:", value=st.session_state.target)
+    # Removed emojis from labels to fix "weird boxes" issue
+    target = st.text_input("TARGET GEOGRAPHY:", value=st.session_state.target)
     st.session_state.target = target
 with col_sort:
-    sort_order = st.selectbox("↕️ EDITORIAL PRIORITY:", ["Most Negative First", "Most Positive First"])
+    # Removed emojis from labels
+    sort_order = st.selectbox("EDITORIAL PRIORITY:", ["Most Negative First", "Most Positive First"])
 
 # --- FETCH DATA FROM SQL ---
 conn = get_db_connection()
@@ -126,8 +131,6 @@ conn.close()
 
 if not filtered_df.empty:
     ascending = True if "Negative" in sort_order else False
-    
-    # Aggregation
     df_grouped = filtered_df.groupby('source_url')['sentiment_score'].agg(['mean', 'count']).reset_index()
     df_grouped.columns = ['source_url', 'avg_score', 'vol']
     df_grouped = df_grouped.sort_values(by='avg_score', ascending=ascending).head(15)
@@ -139,11 +142,9 @@ if not filtered_df.empty:
         return "⚖️ NEUTRAL ALIGNMENT"
     df_grouped['ANALYSIS'] = df_grouped['avg_score'].apply(get_label)
 
-    # --- SECTION 1: THE TABLE ---
     st.subheader(f"MEDIA LANDSCAPE: {target.upper()}")
     st.table(df_grouped[['CHANNEL', 'ANALYSIS', 'vol']].rename(columns={'vol': 'Articles'}))
 
-    # --- SECTION 2: GRAPHS (THEME MATCHED) ---
     c1, c2 = st.columns(2)
     with c1:
         fig1 = px.histogram(filtered_df, x="sentiment_score", title="Sentiment Polarity Spread", color_discrete_sequence=['#a01a1a'])
@@ -154,12 +155,33 @@ if not filtered_df.empty:
         fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#e0e0d1"))
         st.plotly_chart(fig2, use_container_width=True)
 
-    # --- SECTION 3: PL/SQL TRIGGER TEST ---
+    # --- SECTION 6: COMPARE 2 COUNTRIES ---
+    st.markdown("---")
+    st.subheader("⚔️ CROSS-REGIONAL COMPARE")
+    comp_a, comp_b = st.columns(2)
+    
+    with comp_a:
+        c_a = st.selectbox("COUNTRY ALPHA:", country_list, index=0)
+    with comp_b:
+        c_b = st.selectbox("COUNTRY BETA:", country_list, index=min(1, len(country_list)-1))
+
+    conn = get_db_connection()
+    res_a = pd.read_sql(f"SELECT AVG(sentiment_score) as avg FROM news_signals WHERE location_name ILIKE '%{c_a}%'", conn)['avg'].iloc[0]
+    res_b = pd.read_sql(f"SELECT AVG(sentiment_score) as avg FROM news_signals WHERE location_name ILIKE '%{c_b}%'", conn)['avg'].iloc[0]
+    conn.close()
+
+    m1, m2 = st.columns(2)
+    with m1:
+        st.markdown(f"<div class='compare-box'><p style='color:#666; margin:0;'>{c_a}</p><h2 style='color:#a01a1a;'>{res_a if res_a else 0.0:.2f}</h2></div>", unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"<div class='compare-box'><p style='color:#666; margin:0;'>{c_b}</p><h2 style='color:#e0e0d1;'>{res_b if res_b else 0.0:.2f}</h2></div>", unsafe_allow_html=True)
+
+    # --- SECTION 7: REPORT & CARDS ---
     st.markdown("---")
     st.subheader("🚩 REPORT BIAS")
     col_rep1, col_rep2 = st.columns([3,1])
     with col_rep1:
-        report_channel = st.selectbox("Select Channel to Report:", df_grouped['CHANNEL'].tolist())
+        report_channel = st.selectbox("CHANNEL TO REPORT:", df_grouped['CHANNEL'].tolist())
     with col_rep2:
         if st.button("SUBMIT REPORT"):
             conn = get_db_connection()
@@ -167,9 +189,8 @@ if not filtered_df.empty:
             cur.execute("INSERT INTO bias_reports (report_reason) VALUES (%s)", (f"Bias Flagged: {report_channel}",))
             conn.commit()
             conn.close()
-            st.toast("Trigger Activated: Audit logged.", icon="✒️")
+            st.toast("Trigger Activated.", icon="✒️")
 
-    # --- SECTION 4: CARDS ---
     st.markdown("---")
     st.subheader("📑 RECENT SIGNAL INTERCEPTS")
     cards_df = filtered_df.sample(min(len(filtered_df), 6))
