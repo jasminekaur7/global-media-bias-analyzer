@@ -14,13 +14,19 @@ try:
     
     # 3. Clean the data (Ensure scores are numbers)
     df['sentiment_score'] = pd.to_numeric(df['sentiment_score'], errors='coerce')
-
+try: 
     # 4. Push to SQL
     # This 'replaces' the table to match your CSV perfectly
-    df.to_sql('news_signals', engine, if_exists='replace', index=False)
-    
-    print("✅ SUCCESS: Your data is now in the database!")
+   # Update this line in fix_db.py
+    df.to_sql(
+    'news_signals', 
+    engine, 
+    if_exists='replace',  # This will try to drop the table first
+    index=False,
+    method='multi',       # Faster for cloud
+    chunksize=1000        # Smaller chunks to avoid overwhelming the connection  
+    )
+    print("✅ Success! The news data is now live in the Neon Cloud.")
     print("You can now run app_deploy.py")
-
 except Exception as e:
     print(f"❌ ERROR: {e}")

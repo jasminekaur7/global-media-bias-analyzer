@@ -93,7 +93,7 @@ def sentiment_label(s):
     return "NEUTRAL"
 
 def label_color(label):
-    return "color:#a01a1a;" if "NEGATIVE" in label else ("color:#e0e0d1;" if "POSITIVE" in label else "color:#555;")
+    return "color:#a01a1a;" if "NEGATIVE" in label else ("color:#00A86B;" if "POSITIVE" in label else "color:#555;")
 
 PLOT = dict(
     template="plotly_dark",
