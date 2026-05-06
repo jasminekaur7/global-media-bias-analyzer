@@ -340,21 +340,37 @@ if st.session_state.tab == "dashboard":
         st.plotly_chart(fig2, use_container_width=True)
 
     # ── report bias ──────────────────────────────────────────────────────────
-    section("Report Bias")
-    rep_c, btn_c = st.columns([4, 1])
-    with rep_c:
-        report_ch = st.selectbox("Channel to Flag", df_grouped["CHANNEL"].tolist())
-    with btn_c:
-        st.markdown("<div style='margin-top:1.7rem;'></div>", unsafe_allow_html=True)
-        if st.button("Submit Flag"):
-            try:
-                conn = get_db_connection(); cur = conn.cursor()
-                cur.execute("INSERT INTO bias_reports (report_reason) VALUES (%s)", (f"Bias Flagged: {report_ch}",))
-                conn.commit(); conn.close()
-                st.toast("Signal logged.", icon="✒️")
-            except Exception as e:
-                st.error(str(e))
+   # --- SECTION 3: REFINED REPORT BIAS ---
+st.markdown("---")
+st.subheader("🚩 REPORT BIAS")
+col_rep1, col_rep2, col_rep3 = st.columns([2,2,1])
 
+with col_rep1:
+    report_channel = st.selectbox("CHANNEL TO FLAG:", df_grouped['CHANNEL'].tolist())
+
+with col_rep2:
+    # Adding the 4 categories from your synopsis here
+    bias_category = st.selectbox("BASIS OF REPORTING:", [
+        "Inaccurate Reporting (Fake News)",
+        "Political Favoritism",
+        "Sensationalism",
+        "Cultural / Regional Insensitivity"
+    ])
+
+with col_rep3:
+    st.write(" ") # Just for alignment
+    if st.button("SUBMIT FLAG"):
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            # Saving both the channel name AND the specific category[cite: 4]
+            full_reason = f"{bias_category} flagged for {report_channel}"
+            cur.execute("INSERT INTO bias_reports (report_reason) VALUES (%s)", (full_reason,))
+            conn.commit()
+            conn.close()
+            st.toast(f"SUCCESS: {report_channel} logged for {bias_category}", icon="✒️")
+        except Exception as e:
+            st.error(f"Database Error: {e}")
     # ── intercept cards ──────────────────────────────────────────────────────
     section("Recent Signal Intercepts")
     sample = filtered_df.sample(min(len(filtered_df), 6))
