@@ -341,36 +341,72 @@ if st.session_state.tab == "dashboard":
 
     # ── report bias ──────────────────────────────────────────────────────────
    # --- SECTION 3: REFINED REPORT BIAS ---
-st.markdown("---")
-st.subheader("🚩 REPORT BIAS")
-col_rep1, col_rep2, col_rep3 = st.columns([2,2,1])
+   # ============================================================
+# TAB 4: BIAS REPORTING & INTERCEPTS
+# ============================================================
+with tab4:
+    st.subheader("🚩 SIGNAL INTERCEPTION & REPORTING")
+    
+    # This matches the "Report Bias" section in your synopsis
+    st.markdown('<div class="legend-box">AUDIT INTERFACE: Categorize and log biased reporting patterns below.</div>', unsafe_allow_html=True)
+    
+    col_rep1, col_rep2, col_rep3 = st.columns([2, 2, 1])
 
-with col_rep1:
-    report_channel = st.selectbox("CHANNEL TO FLAG:", df_grouped['CHANNEL'].tolist())
+    with col_rep1:
+        # Pulls channels directly from your active dataset
+        if not df.empty:
+            report_channel = st.selectbox("CHANNEL TO FLAG:", df['actor_name'].unique())
+        else:
+            report_channel = st.selectbox("CHANNEL TO FLAG:", ["No signals detected"])
 
-with col_rep2:
-    # Adding the 4 categories from your synopsis here
-    bias_category = st.selectbox("BASIS OF REPORTING:", [
-        "Inaccurate Reporting (Fake News)",
-        "Political Favoritism",
-        "Sensationalism",
-        "Cultural / Regional Insensitivity"
-    ])
+    with col_rep2:
+        # Mandatory categories mentioned in your synopsis to turn "anecdotal" complaints into "structured data"[cite: 4]
+        bias_category = st.selectbox("BASIS OF REPORTING:", [
+            "Inaccurate Reporting (Fake News)",
+            "Political Favoritism",
+            "Sensationalism",
+            "Cultural / Regional Insensitivity"
+        ])
 
-with col_rep3:
-    st.write(" ") # Just for alignment
-    if st.button("SUBMIT FLAG"):
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            # Saving both the channel name AND the specific category[cite: 4]
-            full_reason = f"{bias_category} flagged for {report_channel}"
-            cur.execute("INSERT INTO bias_reports (report_reason) VALUES (%s)", (full_reason,))
-            conn.commit()
-            conn.close()
-            st.toast(f"SUCCESS: {report_channel} logged for {bias_category}", icon="✒️")
-        except Exception as e:
-            st.error(f"Database Error: {e}")
+    with col_rep3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("SUBMIT FLAG"):
+            try:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                
+                # We combine the category and channel to provide the 'report_reason' for the PL/SQL Trigger
+                full_reason = f"{bias_category} flagged for {report_channel}"
+                
+                cur.execute("INSERT INTO bias_reports (report_reason) VALUES (%s)", (full_reason,))
+                conn.commit()
+                conn.close()
+                
+                # This success toast confirms the Trigger has fired on the backend
+                st.toast(f"LOGGED: {report_channel} flagged for {bias_category}", icon="✒️")
+            except Exception as e:
+                # If the 'bias_reports' table is missing, this will catch it[cite: 4]
+                st.error(f"DATABASE ERROR: Ensure 'bias_reports' table exists. Error: {e}")
+
+    # --- RECENT SIGNAL INTERCEPTS (CARDS) ---
+    st.markdown("---")
+    st.subheader("📑 RECENT SIGNAL INTERCEPTS")
+    if not df.empty:
+        # Displaying cards for the selected target geography[cite: 4]
+        cards_df = df.sample(min(len(df), 6))
+        grid = st.columns(3)
+        for i, (idx, row) in enumerate(cards_df.iterrows()):
+            with grid[i % 3]:
+                score = row['sentiment_score']
+                # Visual logic: Red for negative scores, Beige/White for positive
+                color = "#a01a1a" if score < 0 else "#e0e0d1"
+                st.markdown(f"""<div class="cyber-card" style="border-top: 5px solid {color};">
+                    <h4 style="margin:0; border:none; font-size:1rem;">📡 {extract_source(row['source_url'])}</h4>
+                    <p style="color: {color}; margin-top:10px;"><b>BIAS SCORE: {score:.2f}</b></p>
+                </div>""", unsafe_allow_html=True)
+                st.link_button("READ ARTICLE", str(row['source_url']), use_container_width=True)
+    else:
+        st.info("No intercepted signals for the current target.")
     # ── intercept cards ──────────────────────────────────────────────────────
     section("Recent Signal Intercepts")
     sample = filtered_df.sample(min(len(filtered_df), 6))
