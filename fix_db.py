@@ -1,38 +1,26 @@
 import psycopg2
-import random
 
+# We are intentionally removing the try/except block so Python FORCES the exact red error to show.
 DB_URL = "postgresql://neondb_owner:npg_GSZgsy4Eaf2p@ep-green-wind-anshqoip.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
 
-def populate_global_registry():
-    try:
-        print("🔗 Attempting to connect to Neon...")
-        conn = psycopg2.connect(DB_URL)
-        cur = conn.cursor()
-        
-        print("🧹 Cleaning existing signals...")
-        cur.execute("TRUNCATE TABLE news_signals CASCADE;")
+print("Step 1: Connecting to Neon Cloud...")
+conn = psycopg2.connect(DB_URL)
+cur = conn.cursor()
 
-        # A larger list to verify the 190+ countries goal
-        countries = ["India", "USA", "Russia", "China", "UK", "Germany", "France", "Brazil", "Japan", "Canada", "Australia", "Israel", "Ukraine", "Egypt", "Mexico"]
-        channels = ["BBC NEWS", "CNN", "REUTERS", "NDTV", "AL JAZEERA", "THE HINDU"]
+print("Step 2: Connection successful. Inserting test data...")
+cur.execute(
+    "INSERT INTO news_signals (actor_name, sentiment_score, source_url, location_name) VALUES (%s, %s, %s, %s)",
+    ("TEST NEWS", 1.5, "https://test.com", "India")
+)
 
-        print(f"📥 Injecting signals for {len(countries)} countries...")
-        count = 0
-        for country in countries:
-            for _ in range(15):
-                score = round(random.uniform(-8.5, 4.0), 2)
-                cur.execute(
-                    "INSERT INTO news_signals (actor_name, sentiment_score, source_url, location_name) VALUES (%s, %s, %s, %s)",
-                    (random.choice(channels), score, "https://gdelt.org", country)
-                )
-                count += 1
-        
-        conn.commit()
-        print(f"✅ SUCCESS! {count} signals inserted across {len(countries)} regions.")
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print(f"❌ DATABASE ERROR: {e}")
+print("Step 3: Committing data to the cloud...")
+conn.commit()
 
-if __name__ == "__main__":
-    populate_global_registry()
+print("Step 4: Verifying the row exists...")
+cur.execute("SELECT COUNT(*) FROM news_signals;")
+count = cur.fetchone()[0]
+
+print(f"✅ FINAL SUCCESS: The database now has {count} rows.")
+
+cur.close()
+conn.close()
