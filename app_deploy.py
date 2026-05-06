@@ -382,7 +382,7 @@ if st.session_state.tab == "dashboard":
 # ═══════════════════════════════════════════════════════════════════════════════
 if st.session_state.tab == "dashboard":
     # ... dashboard code ...
-else st.session_state.tab == "compare":  # <--- THIS IS THE ERROR
+elif st.session_state.tab == "compare":  # <--- THIS IS THE ERROR
 
     section("Cross-Regional Bias Comparison")
 
